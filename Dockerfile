@@ -1,11 +1,11 @@
 FROM node:20-slim
 
-# yt-dlp ও ffmpeg ইনস্টল
 RUN apt-get update && apt-get install -y \
     python3 \
     python3-pip \
     ffmpeg \
-    && pip3 install --break-system-packages yt-dlp \
+    curl \
+    && pip3 install --break-system-packages --upgrade yt-dlp \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
