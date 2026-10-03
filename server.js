@@ -1,72 +1,62 @@
 'use strict';
-
 const express = require('express');
 const { execFile } = require('child_process');
 const path = require('path');
 const fs = require('fs');
-const crypto = require('crypto');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
-
-// Render-এর জন্য অবশ্যই 0.0.0.0 তে bind করতে হবে [citation:13]
 const HOST = '0.0.0.0';
 
 app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
 
-// Health check (Render-এর জন্য জরুরি)
 app.get('/health', (req, res) => {
-    res.json({ status: 'ok', timestamp: new Date().toISOString() });
+    res.json({ status: 'ok' });
 });
 
-// মূল ডাউনলোড endpoint
-app.post('/api/download', async (req, res) => {
+app.post('/api/download', (req, res) => {
     const { url } = req.body;
 
     if (!url || typeof url !== 'string') {
-        return res.status(400).json({ error: 'URL প্রয়োজন' });
+        return res.status(400).json({ error: 'URL দিন' });
     }
 
-    // নিরাপত্তা: শুধু http/https allow
     if (!/^https?:\/\//i.test(url)) {
-        return res.status(400).json({ error: 'সঠিক URL দিন (http/https)' });
+        return res.status(400).json({ error: 'সঠিক URL দিন' });
     }
 
-    const id = crypto.randomBytes(8).toString('hex');
-    const outputDir = path.join('/tmp', 'downloads');
-    const outputTemplate = path.join(outputDir, `${id}.%(ext)s`);
+    const id = Date.now().toString(36);
+    const outDir = '/tmp/dl';
+    if (!fs.existsSync(outDir)) fs.mkdirSync(outDir, { recursive: true });
 
-    // /tmp ফোল্ডার বানান (Render-এ writable)
-    if (!fs.existsSync(outputDir)) {
-        fs.mkdirSync(outputDir, { recursive: true });
-    }
+    const template = path.join(outDir, `${id}.%(ext)s`);
 
-    // yt-dlp দিয়ে ডাউনলোড
+    // yt-dlp কে বলছি best quality নিতে
     const args = [
         '--no-playlist',
         '--no-warnings',
-        '-f', 'best[ext=mp4]/best',
-        '-o', outputTemplate,
+        '-f', 'bestvideo[ext=mp4]+bestaudio[ext=m4a]/best[ext=mp4]/best',
+        '--merge-output-format', 'mp4',
+        '-o', template,
         url
     ];
 
-    execFile('yt-dlp', args, { timeout: 120000 }, (error, stdout, stderr) => {
-        if (error) {
-            console.error('yt-dlp error:', stderr || error.message);
+    execFile('yt-dlp', args, { timeout: 180000 }, (err, stdout, stderr) => {
+        if (err) {
+            console.error('yt-dlp error:', stderr || err.message);
             return res.status(500).json({
                 error: 'ডাউনলোড ব্যর্থ',
-                details: (stderr || error.message).slice(0, 300)
+                details: (stderr || err.message).slice(0, 300)
             });
         }
 
-        // ডাউনলোড হওয়া ফাইল খুঁজুন
-        const files = fs.readdirSync(outputDir).filter(f => f.startsWith(id));
-        if (files.length === 0) {
+        const files = fs.readdirSync(outDir).filter(f => f.startsWith(id));
+        if (!files.length) {
             return res.status(500).json({ error: 'ফাইল পাওয়া যায়নি' });
         }
 
-        const filePath = path.join(outputDir, files[0]);
+        const filePath = path.join(outDir, files[0]);
         const stat = fs.statSync(filePath);
 
         res.setHeader('Content-Type', 'video/mp4');
@@ -75,14 +65,10 @@ app.post('/api/download', async (req, res) => {
 
         const stream = fs.createReadStream(filePath);
         stream.pipe(res);
-
-        // ডাউনলোড শেষে ফাইল মুছুন
-        stream.on('close', () => {
-            fs.unlink(filePath, () => {});
-        });
+        stream.on('close', () => fs.unlink(filePath, () => {}));
     });
 });
 
 app.listen(PORT, HOST, () => {
-    console.log(`🚀 Server running on http://${HOST}:${PORT}`);
+    console.log(`🚀 Server on http://${HOST}:${PORT}`);
 });
