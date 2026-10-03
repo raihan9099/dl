@@ -1,5 +1,5 @@
 {
-  "name": "fb-downloader",
+  "name": "all-in-one-downloader",
   "version": "1.0.0",
   "main": "server.js",
   "scripts": {
