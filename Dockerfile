@@ -1,5 +1,6 @@
 FROM node:20-slim
 
+# yt-dlp, ffmpeg, python3 ইনস্টল
 RUN apt-get update && apt-get install -y \
     python3 \
     python3-pip \
@@ -15,6 +16,6 @@ RUN npm install --production
 
 COPY . .
 
-EXPOSE 3000
+EXPOSE 10000
 
 CMD ["node", "server.js"]
