@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="bn">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>All-in-One Downloader</title>
+<style>
+  body { font-family: system-ui, sans-serif; max-width: 600px; margin: 60px auto; padding: 20px; }
+  input { width: 100%; padding: 12px; font-size: 16px; box-sizing: border-box; }
+  button { margin-top: 12px; padding: 12px 24px; font-size: 16px; cursor: pointer; }
+  #status { margin-top: 16px; color: #555; }
+</style>
+</head>
+<body>
+  <h1>All-in-One Downloader</h1>
+  <p>Facebook, YouTube, Instagram — লিংক পেস্ট করুন</p>
+  <input id="url" type="text" placeholder="https://..." />
+  <button onclick="download()">ডাউনলোড</button>
+  <div id="status"></div>
+
+<script>
+async function download() {
+  const url = document.getElementById('url').value.trim();
+  if (!url) return;
+  const status = document.getElementById('status');
+  status.textContent = '⏳ ডাউনলোড হচ্ছে...';
+
+  try {
+    const res = await fetch('/api/download', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ url })
+    });
+
+    if (!res.ok) {
+      const err = await res.json();
+      status.textContent = '❌ ' + (err.error || 'ব্যর্থ');
+      return;
+    }
+
+    const blob = await res.blob();
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = 'video.mp4';
+    a.click();
+    status.textContent = '✅ ডাউনলোড সম্পন্ন';
+  } catch (e) {
+    status.textContent = '❌ ' + e.message;
+  }
+}
+</script>
+</body>
+</html>
