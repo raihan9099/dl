@@ -6,35 +6,41 @@
 <title>All-in-One Downloader</title>
 <style>
   body { font-family: system-ui, sans-serif; max-width: 600px; margin: 60px auto; padding: 20px; }
-  input { width: 100%; padding: 12px; font-size: 16px; box-sizing: border-box; }
-  button { margin-top: 12px; padding: 12px 24px; font-size: 16px; cursor: pointer; }
-  #status { margin-top: 16px; color: #555; }
+  input, textarea { width: 100%; padding: 12px; font-size: 16px; box-sizing: border-box; margin-bottom: 12px; border: 1px solid #ccc; border-radius: 6px; }
+  button { padding: 12px 24px; font-size: 16px; cursor: pointer; background: #007bff; color: #fff; border: 0; border-radius: 6px; }
+  button:disabled { opacity: 0.5; cursor: not-allowed; }
+  #status { margin-top: 16px; font-weight: 500; }
 </style>
 </head>
 <body>
   <h1>All-in-One Downloader</h1>
-  <p>Facebook, YouTube, Instagram — লিংক পেস্ট করুন</p>
-  <input id="url" type="text" placeholder="https://..." />
-  <button onclick="download()">ডাউনলোড</button>
+  <p>Facebook Story, Reels, ভিডিও — লিংক পেস্ট করুন</p>
+  <input id="url" type="text" placeholder="https://www.facebook.com/stories/..." />
+  <textarea id="cookies" rows="3" placeholder="(ঐচ্ছিক) Facebook Cookies — লকড প্রোফাইলের জন্য"></textarea>
+  <button id="btn" onclick="download()">Download HD</button>
   <div id="status"></div>
 
 <script>
 async function download() {
   const url = document.getElementById('url').value.trim();
-  if (!url) return;
+  const cookies = document.getElementById('cookies').value.trim();
+  const btn = document.getElementById('btn');
   const status = document.getElementById('status');
-  status.textContent = '⏳ ডাউনলোড হচ্ছে...';
+
+  if (!url) return;
+  btn.disabled = true;
+  status.textContent = '⏳ ডাউনলোড হচ্ছে... (একটু সময় লাগতে পারে)';
 
   try {
     const res = await fetch('/api/download', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ url })
+      body: JSON.stringify({ url, cookies })
     });
 
     if (!res.ok) {
       const err = await res.json();
-      status.textContent = '❌ ' + (err.error || 'ব্যর্থ');
+      status.textContent = '❌ ' + (err.error || 'ব্যর্থ') + (err.details ? ' — ' + err.details : '');
       return;
     }
 
@@ -46,6 +52,8 @@ async function download() {
     status.textContent = '✅ ডাউনলোড সম্পন্ন';
   } catch (e) {
     status.textContent = '❌ ' + e.message;
+  } finally {
+    btn.disabled = false;
   }
 }
 </script>
